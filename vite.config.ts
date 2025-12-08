@@ -23,8 +23,11 @@ export default defineConfig({
       input: {
         "background/worker": "./src/background/worker.ts",
         "content/ui": "./src/content/ui.tsx",
+        "content/hook": "./src/content/hook.ts",
+        "content/hook-listener": "./src/content/hook-listener.ts",
       },
       output: {
+        manualChunks: undefined,
         entryFileNames: (chunk) => `${chunk.name}.js`,
         assetFileNames: (asset) => `assets/${asset.name ?? "[name].[ext]"}`,
       },

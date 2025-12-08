@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "0.1",
+  "version": "0.2",
   "name": "Lasso Chat Sanitizer",
   "background": {
     "service_worker": "background/worker.js",
@@ -8,13 +8,19 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://chat.openai.com/*", "https://chatgpt.com/*"],
-      "js": ["vendor/browser-polyfill.js", "content/content.js"]
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      "js": ["vendor/browser-polyfill.js", "content/hook-loader.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      "js": ["content/content-loader.js"],
+      "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["content/ui.js", "assets/*"],
+      "resources": ["content/ui.js", "content/hook.js", "content/hook-listener.js", "assets/*"],
       "matches": ["https://chat.openai.com/*", "https://chatgpt.com/*"]
     }
   ]
