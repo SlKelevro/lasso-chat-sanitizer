@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "version": "0.1",
+  "name": "Lasso Chat Sanitizer",
+  "background": {
+    "service_worker": "background/worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chat.openai.com/*", "https://chatgpt.com/*"],
+      "js": ["vendor/browser-polyfill.js", "content/content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content/ui.js", "assets/*"],
+      "matches": ["https://chat.openai.com/*", "https://chatgpt.com/*"]
+    }
+  ]
+}
