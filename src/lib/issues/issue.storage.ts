@@ -1,3 +1,5 @@
+import browser from "webextension-polyfill";
+
 export type Issue = {
   token: string;
   createdAt: number;

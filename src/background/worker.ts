@@ -14,7 +14,12 @@ import type { PayloadMap, PromptProcessingResult } from "@/lib/messaging/types.t
 import { platformPromptHandler } from "@/lib/platforms";
 
 const issueStorage = new IssueStorage();
-await issueStorage.load();
+
+function refreshIssueStorage() {
+  issueStorage.load().then(() => console.log("Issue storage refreshed"));
+}
+
+refreshIssueStorage();
 
 browser.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") {
@@ -22,7 +27,7 @@ browser.storage.onChanged.addListener((changes, area) => {
   }
 
   if (changes.issues) {
-    issueStorage.load().then(() => console.log("Issue storage refreshed"));
+    refreshIssueStorage();
   }
 });
 
