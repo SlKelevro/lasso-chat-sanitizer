@@ -8,14 +8,14 @@ export class ChatgptPromptHandler implements PlatformPromptHandler<ChatgptReques
   }
 
   findSanitizableTokens(content: string | ChatgptRequestBody): string[] {
-    const request: ChatgptRequestBody = this.toRequestBody(content);
-    if (!Array.isArray(request.messages)) {
+    const request = this.toRequestBody(content);
+    if (!this.isValidBody(request)) {
       return [];
     }
 
     const text = request.messages
       .map((message) => {
-        return (message.content?.parts ?? []).join(" ");
+        return message.content.parts.join(" ");
       })
       .join(" ");
 
@@ -26,16 +26,16 @@ export class ChatgptPromptHandler implements PlatformPromptHandler<ChatgptReques
   }
 
   updateContent(content: string | ChatgptRequestBody, tokens: string[]): string {
-    const request: ChatgptRequestBody = this.toRequestBody(content);
+    const request = this.toRequestBody(content);
 
-    if (!Array.isArray(request.messages)) {
+    if (!this.isValidBody(request)) {
       return this.contentToString(content);
     }
 
     let hasUpdates = false;
 
-    request.messages?.forEach((message) => {
-      if (Array.isArray(message?.content?.parts) && (message.content.parts.length ?? 0 > 0)) {
+    request.messages.forEach((message) => {
+      if (message.content.parts.length > 0) {
         message.content.parts = message.content.parts.map((part) => {
           let sanitizedPart = part;
 
@@ -55,7 +55,15 @@ export class ChatgptPromptHandler implements PlatformPromptHandler<ChatgptReques
     return hasUpdates ? JSON.stringify(request) : this.contentToString(content);
   }
 
-  private toRequestBody(content: string | ChatgptRequestBody) {
+  private isValidBody(value: Record<string, unknown>): value is ChatgptRequestBody {
+    if (!(typeof value === "object" && Array.isArray(value.messages) && value.messages.length > 0)) {
+      return false;
+    }
+
+    return value.messages.filter((msg) => !Array.isArray(msg?.content?.parts ?? false)).length === 0;
+  }
+
+  private toRequestBody(content: string | Record<string, unknown>): Record<string, unknown> {
     return typeof content === "string" ? JSON.parse(content) : content;
   }
 

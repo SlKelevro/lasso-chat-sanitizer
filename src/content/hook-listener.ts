@@ -1,27 +1,17 @@
 import type { ProtocolMessage, WithRequestId, WithSource } from "@/lib/messaging/types.ts";
+import { MESSAGE_TYPES, SOURCE_TYPES } from "@/lib/messaging/constants.ts";
+import { hasRequestId, hasSource, isProtocolMessage } from "@/lib/messaging/helpers.ts";
 
 type CommonMessage = WithSource<WithRequestId<ProtocolMessage>>;
 
 function isCommonMessage(value: unknown): value is CommonMessage {
-  if (typeof value !== "object" || !value) {
-    return false;
-  }
-
-  const object = value as { [key: string]: string | object };
-  const mapping = {
-    source: "string",
-    requestId: "string",
-    type: "string",
-    payload: "object",
-  };
-
-  return Object.entries(mapping).filter(([field, type]) => object[field] && typeof object[field] !== type).length === 0;
+  return isProtocolMessage(value) && hasSource(value) && hasRequestId(value);
 }
 
 function isProcessPromptMessage(
   value: CommonMessage,
 ): value is WithSource<WithRequestId<ProtocolMessage<"process-prompt">>> {
-  return value.type === "process-prompt";
+  return value.type === MESSAGE_TYPES.PROCESS_PROMPT;
 }
 
 (async () => {
@@ -42,16 +32,16 @@ function isProcessPromptMessage(
 
     const data: CommonMessage = event.data;
 
-    if (data.source !== "lasso-request-handler") {
+    if (data.source !== SOURCE_TYPES.REQUEST_HANDLER) {
       return;
     }
 
     const { requestId, ...message } = data;
 
-    console.log("Received message in hook-loader", requestId, message);
+    console.log("Hook listener received a message", requestId, message);
 
     if (isProcessPromptMessage(data)) {
-      const newMessage: CommonMessage = { ...data, source: "lasso-ext-hook-loader" };
+      const newMessage: CommonMessage = { ...data, source: SOURCE_TYPES.HOOK_LISTENER };
 
       browser.runtime.sendMessage(newMessage).then((response) => {
         console.log("Response from worker:", response);
@@ -60,13 +50,13 @@ function isProcessPromptMessage(
           return;
         }
 
-        if (response.source !== "lasso-ext-worker" || response.requestId !== requestId) {
+        if (response.source !== SOURCE_TYPES.WORKER || response.requestId !== requestId) {
           return;
         }
 
         const responseMessage: CommonMessage = {
           requestId,
-          source: "lasso-extension",
+          source: SOURCE_TYPES.EXTENSION,
           type: response.type,
           payload: response.payload,
         };

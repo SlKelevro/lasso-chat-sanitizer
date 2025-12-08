@@ -80,6 +80,10 @@ export async function notifyExtension<Response = unknown | null>(message: Protoc
         return;
       }
 
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
       const data = event.data;
 
       if (!isProtocolMessage(data) || !hasRequestId(data) || !hasSource(data)) {

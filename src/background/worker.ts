@@ -8,9 +8,23 @@ import {
   withRequestId,
   withSource,
 } from "@/lib/messaging/helpers.ts";
+import { IssueStorage } from "@/lib/issues/issue.storage.ts";
 import { MESSAGE_TYPES, SOURCE_TYPES } from "@/lib/messaging/constants.ts";
-import type { PayloadMap, PromptAllowed, PromptRejected } from "@/lib/messaging/types.ts";
-import type { ChatgptRequestBody } from "@/lib/platforms/chatgpt/types.ts";
+import type { PayloadMap, PromptProcessingResult } from "@/lib/messaging/types.ts";
+import { platformPromptHandler } from "@/lib/platforms";
+
+const issueStorage = new IssueStorage();
+await issueStorage.load();
+
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") {
+    return;
+  }
+
+  if (changes.issues) {
+    issueStorage.load().then(() => console.log("Issue storage refreshed"));
+  }
+});
 
 browser.runtime.onMessage.addListener((message: unknown) => {
   console.log("Received message:", message);
@@ -22,7 +36,32 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     if (message.type === MESSAGE_TYPES.PROCESS_PROMPT) {
       const content = (message.payload as PayloadMap["process-prompt"]).content;
 
-      const responsePayload = Math.random() * 100 > 80 ? promptAllowed(content) : promptRejected();
+      browser.storage.local.set({ [message.platformType]: { lastRequest: content } });
+
+      let responsePayload: PromptProcessingResult = { result: "allowed", content };
+      const handler = platformPromptHandler(message.platformType);
+      if (handler) {
+        const foundTokens = handler.findSanitizableTokens(content);
+        const tokenStatuses = issueStorage.findTokenStatuses(foundTokens);
+        const tokensToReject = [...tokenStatuses.registered, ...tokenStatuses.unknown];
+
+        if (tokenStatuses.unknown.length) {
+          issueStorage.addIssues(tokenStatuses.unknown);
+        }
+
+        const rejectedTokensMessage = withSource(
+          withRequestId(buildMessage(MESSAGE_TYPES.TOKENS_REJECTED, { tokens: tokensToReject })),
+          SOURCE_TYPES.WORKER,
+        );
+
+        browser.runtime.sendMessage(rejectedTokensMessage);
+
+        if (tokensToReject.length > 0) {
+          responsePayload = { result: "rejected", tokens: tokensToReject };
+        } else {
+          responsePayload = { result: "allowed", content: handler.updateContent(content, tokenStatuses.dismissed) };
+        }
+      }
 
       const responseMessage = withSource(
         withRequestId(buildMessage(MESSAGE_TYPES.PROMPT_PROCESSING_RESULT, responsePayload), message.requestId),
@@ -35,26 +74,3 @@ browser.runtime.onMessage.addListener((message: unknown) => {
 
   return true;
 });
-
-function promptAllowed(content: string): PromptAllowed {
-  const decoded = JSON.parse(content) as ChatgptRequestBody;
-
-  for (const msg of decoded.messages ?? []) {
-    if (Array.isArray(msg.content?.parts) && msg.content.parts.length > 0) {
-      msg.content.parts = ["Tell me current time pls"];
-      break;
-    }
-  }
-
-  return {
-    result: "allowed",
-    content: JSON.stringify(decoded),
-  };
-}
-
-function promptRejected(): PromptRejected {
-  return {
-    result: "rejected",
-    tokens: ["some@email.com"],
-  };
-}

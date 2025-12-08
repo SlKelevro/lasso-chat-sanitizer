@@ -1,8 +1,7 @@
 type ChatgptMessage = {
-  id?: string;
-  content?: { parts: string[] };
+  content: { parts: string[] };
 };
 
 export type ChatgptRequestBody = {
-  messages?: ChatgptMessage[];
+  messages: ChatgptMessage[];
 };

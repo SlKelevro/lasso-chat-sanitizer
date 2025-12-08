@@ -8,7 +8,7 @@ export interface PlatformHook {
 
 type PlatformRequestBody = Record<string, unknown>;
 
-export interface PlatformPromptHandler<T extends PlatformRequestBody> {
+export interface PlatformPromptHandler<T extends PlatformRequestBody = PlatformRequestBody> {
   platformName(): PlatformType;
   findSanitizableTokens(content: string | T): string[];
   updateContent(content: string | T, tokens: string[]): string;

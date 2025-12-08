@@ -3,7 +3,7 @@ import { MESSAGE_TYPES, SOURCE_TYPES } from "./constants.ts";
 
 export type PayloadMap = {
   [MESSAGE_TYPES.PROCESS_PROMPT]: { content: string };
-  [MESSAGE_TYPES.PROMPT_TOKENS]: { tokens: string[] };
+  [MESSAGE_TYPES.TOKENS_REJECTED]: { tokens: string[] };
   [MESSAGE_TYPES.PROMPT_PROCESSING_RESULT]: PromptProcessingResult;
 };
 
