@@ -4,7 +4,6 @@ import { SimpleTooltip } from "@/components/ui/tooltip.tsx";
 import { dateString } from "@/lib/utils.ts";
 import { useIssues } from "@/content/context/IssueContext.tsx";
 import IssueStatus from "./IssueStatus.tsx";
-import DismissIssueAction from "./DismissIssueAction.tsx";
 
 function IssueHistory() {
   const { issues } = useIssues();
@@ -19,9 +18,8 @@ function IssueHistory() {
         <TableCaption>History of sensitive data issues.</TableCaption>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">Email</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead className="w-[100px]">Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -34,9 +32,6 @@ function IssueHistory() {
               </TableCell>
               <TableCell>
                 <IssueStatus dismissedUntil={issue.dismissedUntil} />
-              </TableCell>
-              <TableCell>
-                <DismissIssueAction issue={issue} />
               </TableCell>
             </TableRow>
           ))}

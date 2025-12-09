@@ -11,7 +11,7 @@ import {
 } from "@/lib/messaging/helpers.ts";
 import { IssueStorage } from "@/lib/issues/issue.storage.ts";
 import { MESSAGE_TYPES, SOURCE_TYPES } from "@/lib/messaging/constants.ts";
-import type { PayloadMap, PromptProcessingResult } from "@/lib/messaging/types.ts";
+import type { PromptProcessingResult } from "@/lib/messaging/types.ts";
 import { platformPromptProcessor } from "@/lib/platforms";
 
 const issueStorage = new IssueStorage();
@@ -21,6 +21,8 @@ function refreshIssueStorage() {
 }
 
 refreshIssueStorage();
+
+setInterval(refreshIssueStorage, 5000);
 
 browser.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") {
@@ -34,7 +36,7 @@ browser.storage.onChanged.addListener((changes, area) => {
 
 browser.runtime.onMessage.addListener((message: unknown, sender: Runtime.MessageSender) => {
   console.log("Received message:", message);
-  if (!isProtocolMessage(message)) {
+  if (!isProtocolMessage(message, MESSAGE_TYPES.PROCESS_PROMPT)) {
     return true;
   }
 
@@ -43,44 +45,42 @@ browser.runtime.onMessage.addListener((message: unknown, sender: Runtime.Message
   }
 
   if (isPlatformMessage(message) && hasSource(message) && hasRequestId(message)) {
-    if (message.type === MESSAGE_TYPES.PROCESS_PROMPT) {
-      const content = (message.payload as PayloadMap["process-prompt"]).content;
+    const content = message.payload.content;
 
-      browser.storage.local.set({ [message.platformType]: { lastRequest: content } });
+    browser.storage.local.set({ [message.platformType]: { lastRequest: content } });
 
-      let responsePayload: PromptProcessingResult = { result: "allowed", content };
-      const handler = platformPromptProcessor(message.platformType);
-      if (handler) {
-        const foundTokens = handler.findSanitizableTokens(content);
-        const tokenStatuses = issueStorage.findTokenStatuses(foundTokens);
-        const tokensToReject = [...tokenStatuses.registered, ...tokenStatuses.unknown];
+    let responsePayload: PromptProcessingResult = { result: "allowed", content };
+    const handler = platformPromptProcessor(message.platformType);
+    if (handler) {
+      const foundTokens = handler.findSanitizableTokens(content);
+      const tokenStatuses = issueStorage.findTokenStatuses(foundTokens);
+      const tokensToReject = [...tokenStatuses.registered, ...tokenStatuses.unknown];
 
-        if (tokenStatuses.unknown.length) {
-          issueStorage.addIssues(tokenStatuses.unknown);
-          issueStorage.save().then(() => console.log("Issue storage updated"));
-        }
-
-        if (tokensToReject.length > 0) {
-          const rejectedTokensMessage = withSource(
-            withRequestId(buildMessage(MESSAGE_TYPES.TOKENS_REJECTED, { tokens: tokensToReject })),
-            SOURCE_TYPES.WORKER,
-          );
-
-          browser.tabs.sendMessage(sender.tab.id, rejectedTokensMessage);
-
-          responsePayload = { result: "rejected", tokens: tokensToReject };
-        } else {
-          responsePayload = { result: "allowed", content: handler.updatePrompt(content, tokenStatuses.dismissed) };
-        }
+      if (tokenStatuses.unknown.length) {
+        issueStorage.addIssues(tokenStatuses.unknown);
+        issueStorage.save().then(() => console.log("Issue storage updated"));
       }
 
-      const responseMessage = withSource(
-        withRequestId(buildMessage(MESSAGE_TYPES.PROMPT_PROCESSING_RESULT, responsePayload), message.requestId),
-        SOURCE_TYPES.WORKER,
-      );
+      if (tokensToReject.length > 0) {
+        const rejectedTokensMessage = withSource(
+          withRequestId(buildMessage(MESSAGE_TYPES.TOKENS_REJECTED, { tokens: tokensToReject })),
+          SOURCE_TYPES.WORKER,
+        );
 
-      return Promise.resolve(responseMessage);
+        browser.tabs.sendMessage(sender.tab.id, rejectedTokensMessage);
+
+        responsePayload = { result: "rejected", tokens: tokensToReject };
+      } else {
+        responsePayload = { result: "allowed", content: handler.updatePrompt(content, tokenStatuses.dismissed) };
+      }
     }
+
+    const responseMessage = withSource(
+      withRequestId(buildMessage(MESSAGE_TYPES.PROMPT_PROCESSING_RESULT, responsePayload), message.requestId),
+      SOURCE_TYPES.WORKER,
+    );
+
+    return Promise.resolve(responseMessage);
   }
 
   return true;

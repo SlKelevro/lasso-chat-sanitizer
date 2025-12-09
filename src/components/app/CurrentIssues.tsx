@@ -54,11 +54,11 @@ function CurrentIssues() {
         </Table>
       </div>
       <div className="w-full mt-5 flex space-x-4">
-        <Button variant="default" className="bg-green-600 w-1/4" onClick={restorePrompt}>
-          Edit prompt
+        <Button variant="default" className="bg-green-600" disabled={!dismissEnabled} onClick={dismissAll}>
+          Anonymize & continue
         </Button>
-        <Button variant="destructive" className="w-1/3" disabled={!dismissEnabled} onClick={dismissAll}>
-          Ignore & continue
+        <Button variant="default" className="bg-gray-500" onClick={restorePrompt}>
+          Edit prompt
         </Button>
       </div>
     </div>

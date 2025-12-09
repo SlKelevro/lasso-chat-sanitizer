@@ -10,10 +10,18 @@ const ISSUE_HISTORY = "issue-history";
 function App() {
   const modalContext = useModal();
 
+  const skipEvent = (e: Event) => e.preventDefault();
+
   return (
     <>
       <Dialog open={modalContext.isOpen} onOpenChange={modalContext.toggle}>
-        <DialogContent className="max-w-2xl sm:max-w-2xl">
+        <DialogContent
+          className="max-w-2xl sm:max-w-2xl"
+          showCloseButton={false}
+          onEscapeKeyDown={skipEvent}
+          onPointerDownOutside={skipEvent}
+          onInteractOutside={skipEvent}
+        >
           <DialogTitle>Sensitive data review</DialogTitle>
           <DialogDescription asChild={true}>
             <Tabs defaultValue={CURRENT_ISSUES}>
