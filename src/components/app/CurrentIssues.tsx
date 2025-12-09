@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { detectPlatform, platformPromptProcessor } from "@/lib/platforms";
+import { IssueStorage } from "@/lib/issues/issue.storage.ts";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
 import { useModal } from "@/content/context/ModalContext.tsx";
 import { useIssues } from "@/content/context/IssueContext.tsx";
+import DismissIssueAction from "./DismissIssueAction.tsx";
 
 function findPromptProcessor() {
   return platformPromptProcessor(detectPlatform(window.location));
@@ -11,8 +13,12 @@ function findPromptProcessor() {
 
 function CurrentIssues() {
   const modalContext = useModal();
-  const { refreshIssues, dismiss } = useIssues();
+  const { issues: allIssues, refreshIssues } = useIssues();
   const [dismissEnabled, setDismissEnabled] = useState(false);
+
+  const issues = useMemo(() => {
+    return allIssues.filter((issue) => modalContext.currentIssues.includes(issue.token));
+  }, [modalContext.currentIssues, allIssues]);
 
   useEffect(() => {
     refreshIssues().then(() => {
@@ -23,15 +29,17 @@ function CurrentIssues() {
   const restorePrompt = () => {
     modalContext.hide();
 
-    findPromptProcessor()?.restoreLastPrompt(window.document);
+    findPromptProcessor()?.restoreLastPrompt(window.document, []);
   };
 
-  const dismissAll = () => {
-    dismiss(modalContext.currentIssues).then(() => {
-      modalContext.hide();
+  const sanitizeAndContinue = () => {
+    modalContext.hide();
 
-      findPromptProcessor()?.restoreLastPrompt(window.document, true);
-    });
+    const tokensToSanitize = issues
+      .filter((issue) => !IssueStorage.isStillDismissed(issue))
+      .map((issue) => issue.token);
+
+    findPromptProcessor()?.restoreLastPrompt(window.document, tokensToSanitize, true);
   };
 
   return (
@@ -42,19 +50,23 @@ function CurrentIssues() {
           <TableHeader>
             <TableRow>
               <TableHead>Email</TableHead>
+              <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {modalContext.currentIssues.map((token, index) => (
+            {issues.map((issue, index) => (
               <TableRow key={index}>
-                <TableCell>{token}</TableCell>
+                <TableCell>{issue.token}</TableCell>
+                <TableCell>
+                  <DismissIssueAction issue={issue} />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
       <div className="w-full mt-5 flex space-x-4">
-        <Button variant="default" className="bg-green-600" disabled={!dismissEnabled} onClick={dismissAll}>
+        <Button variant="default" className="bg-green-600" disabled={!dismissEnabled} onClick={sanitizeAndContinue}>
           Anonymize & continue
         </Button>
         <Button variant="default" className="bg-gray-500" onClick={restorePrompt}>

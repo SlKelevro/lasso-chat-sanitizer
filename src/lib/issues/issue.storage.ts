@@ -19,6 +19,10 @@ export class IssueStorage {
   private DISMISS_INTERVAL: number = 86_400_000;
   private issues: Issue[] = [];
 
+  static isStillDismissed(item: Issue): boolean {
+    return (item.dismissedUntil ?? 0) > Date.now();
+  }
+
   async load() {
     const result = (await browser.storage.local.get(this.ISSUES_KEY)) as Record<string, Issue[]>;
 
@@ -49,10 +53,6 @@ export class IssueStorage {
     return item.dismissedUntil !== null && item.dismissedUntil < Date.now() ? { ...item, dismissedUntil: null } : item;
   }
 
-  private isStillDismissed(item: Issue): boolean {
-    return (item.dismissedUntil ?? 0) > Date.now();
-  }
-
   dismiss(tokens: string[], interval: number = this.DISMISS_INTERVAL) {
     this.issues = this.issues.map((item) =>
       tokens.includes(item.token) ? { ...item, dismissedUntil: Date.now() + interval } : this.expireDismissal(item),
@@ -74,7 +74,7 @@ export class IssueStorage {
 
     for (const item of this.issues) {
       if (sourceTokens[item.token]) {
-        result[this.isStillDismissed(item) ? TokenStatus.DISMISSED : TokenStatus.REGISTERED].push(item.token);
+        result[IssueStorage.isStillDismissed(item) ? TokenStatus.DISMISSED : TokenStatus.REGISTERED].push(item.token);
 
         delete sourceTokens[item.token];
       }

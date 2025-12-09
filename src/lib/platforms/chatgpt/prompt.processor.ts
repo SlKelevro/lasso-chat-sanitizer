@@ -35,36 +35,26 @@ export class ChatgptPromptProcessor implements PlatformPromptProcessor {
       return requestBody;
     }
 
-    let hasUpdates = false;
-
     requestData.messages.forEach((message) => {
       if (message.content.parts.length > 0) {
-        message.content.parts = message.content.parts.map((part) => {
-          let sanitizedPart = part;
-
-          for (const token of tokens) {
-            sanitizedPart = sanitizedPart.replaceAll(token, SANITIZED_TOKEN);
-          }
-
-          if (sanitizedPart !== part) {
-            hasUpdates = true;
-          }
-
-          return sanitizedPart;
-        });
+        message.content.parts = message.content.parts.map((part) => this.sanitizeTokens(part, tokens));
       }
     });
 
-    return hasUpdates ? JSON.stringify(requestData) : requestBody;
+    return JSON.stringify(requestData);
   }
 
-  async restoreLastPrompt(doc: Document, submit: boolean = false): Promise<void> {
+  async restoreLastPrompt(doc: Document, sanitizeTokens: string[], submit: boolean = false): Promise<void> {
     const data = (await browser.storage.local.get(this.platformName())) as Record<string, StoredPlatformData>;
     if (!data[this.platformName()]) {
       return;
     }
 
-    const text = this.parsePrompt(data[this.platformName()].lastRequest);
+    let text = this.parsePrompt(data[this.platformName()].lastRequest);
+
+    if (sanitizeTokens.length > 0) {
+      text = this.sanitizeTokens(text, sanitizeTokens);
+    }
 
     const textarea = doc.querySelector("#prompt-textarea");
     if (!textarea) {
@@ -92,5 +82,15 @@ export class ChatgptPromptProcessor implements PlatformPromptProcessor {
 
   private toRequestData(content: string | Record<string, unknown>): Record<string, unknown> {
     return typeof content === "string" ? JSON.parse(content) : content;
+  }
+
+  private sanitizeTokens(text: string, tokens: string[]): string {
+    let sanitizedText = text;
+
+    for (const token of tokens) {
+      sanitizedText = sanitizedText.replaceAll(token, SANITIZED_TOKEN);
+    }
+
+    return sanitizedText;
   }
 }

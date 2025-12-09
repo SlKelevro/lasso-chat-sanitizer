@@ -11,7 +11,7 @@ export interface PlatformPromptProcessor {
   parsePrompt(requestBody: string): string;
   findSanitizableTokens(requestBody: string): string[];
   updatePrompt(requestBody: string, tokens: string[]): string;
-  restoreLastPrompt(doc: Document, submit?: boolean): Promise<void>;
+  restoreLastPrompt(doc: Document, sanitizeTokens: string[], submit?: boolean): Promise<void>;
 }
 
 export type PlatformType = (typeof PLATFORMS)[keyof typeof PLATFORMS];
