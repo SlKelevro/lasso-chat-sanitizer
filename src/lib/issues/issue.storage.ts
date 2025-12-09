@@ -29,7 +29,7 @@ export class IssueStorage {
     this.issues = issues;
   }
 
-  private async writeToStorage() {
+  async save() {
     await browser.storage.local.set({ [this.ISSUES_KEY]: this.issues });
   }
 
@@ -37,10 +37,8 @@ export class IssueStorage {
     return this.issues;
   }
 
-  async addIssues(tokens: string[]) {
+  addIssues(tokens: string[]) {
     this.issues = [...this.issues.map(this.expireDismissal), ...tokens.map(this.buildIssue)];
-
-    await this.writeToStorage();
   }
 
   private buildIssue(token: string): Issue {
@@ -55,16 +53,14 @@ export class IssueStorage {
     return (item.dismissedUntil ?? 0) > Date.now();
   }
 
-  async dismiss(tokens: string[], interval: number = this.DISMISS_INTERVAL) {
+  dismiss(tokens: string[], interval: number = this.DISMISS_INTERVAL) {
     this.issues = this.issues.map((item) =>
       tokens.includes(item.token) ? { ...item, dismissedUntil: Date.now() + interval } : this.expireDismissal(item),
     );
-
-    await this.writeToStorage();
   }
 
-  toActiveIssues(): string[] {
-    return this.issues.filter((item) => this.isStillDismissed(item)).map((item) => item.token);
+  find(tokens: string[]): Issue[] {
+    return this.issues.filter((item) => tokens.includes(item.token));
   }
 
   findTokenStatuses(tokens: string[]): TokensByStatus {

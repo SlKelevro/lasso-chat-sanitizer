@@ -24,8 +24,16 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value !== "";
 }
 
-export function isProtocolMessage(value: unknown): value is ProtocolMessage {
-  return isRecord(value) && isNonEmptyString(value.type) && isRecord(value.payload);
+export function isProtocolMessage<T extends MessageType = MessageType>(
+  value: unknown,
+  type?: T,
+): value is ProtocolMessage<T> {
+  const isProto = isRecord(value) && isNonEmptyString(value.type) && isRecord(value.payload);
+  if (!isProto) {
+    return false;
+  }
+
+  return typeof type === "undefined" || value.type === type;
 }
 
 export function withPlatformType<T extends ProtocolMessage = ProtocolMessage>(

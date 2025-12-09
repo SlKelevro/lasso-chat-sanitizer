@@ -6,12 +6,16 @@ export interface PlatformHook {
   install(): void;
 }
 
-type PlatformRequestBody = Record<string, unknown>;
-
-export interface PlatformPromptHandler<T extends PlatformRequestBody = PlatformRequestBody> {
+export interface PlatformPromptProcessor {
   platformName(): PlatformType;
-  findSanitizableTokens(content: string | T): string[];
-  updateContent(content: string | T, tokens: string[]): string;
+  parsePrompt(requestBody: string): string;
+  findSanitizableTokens(requestBody: string): string[];
+  updatePrompt(requestBody: string, tokens: string[]): string;
+  restoreLastPrompt(doc: Document, submit?: boolean): Promise<void>;
 }
 
 export type PlatformType = (typeof PLATFORMS)[keyof typeof PLATFORMS];
+
+export type StoredPlatformData = {
+  lastRequest: string;
+};

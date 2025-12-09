@@ -1,8 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import App from "./App.tsx";
+import App from "@/components/app/App.tsx";
 import { initBrowserApi } from "@/lib/runtime.ts";
+import { ModalProvider } from "@/content/context/ModalContext.tsx";
+import { IssueProvider } from "@/content/context/IssueContext.tsx";
+import { AppContextProvider } from "@/content/context/AppContext.tsx";
 
 console.log("Content UI started");
 
@@ -14,7 +17,7 @@ async function mountContentUI() {
   host.id = "lasso-root";
   host.style.position = "fixed";
   host.style.inset = "0";
-  host.style.zIndex = "12";
+  host.style.zIndex = "120";
   host.style.pointerEvents = "none";
   document.body.appendChild(host);
 
@@ -24,8 +27,10 @@ async function mountContentUI() {
 
   const uiRoot = document.createElement("div");
   uiRoot.style.pointerEvents = "auto";
+
   const portalRoot = document.createElement("div");
   portalRoot.style.pointerEvents = "auto";
+
   const cssLink = document.createElement("link");
   cssLink.setAttribute("type", "text/css");
   cssLink.setAttribute("rel", "stylesheet");
@@ -34,7 +39,13 @@ async function mountContentUI() {
 
   createRoot(uiRoot).render(
     <StrictMode>
-      <App portalRoot={portalRoot} />
+      <AppContextProvider portalRoot={portalRoot}>
+        <ModalProvider>
+          <IssueProvider>
+            <App />
+          </IssueProvider>
+        </ModalProvider>
+      </AppContextProvider>
     </StrictMode>,
   );
 }

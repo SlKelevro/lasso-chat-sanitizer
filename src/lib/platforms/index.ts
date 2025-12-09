@@ -1,17 +1,24 @@
-import { ChatgptHook, ChatgptPromptHandler } from "./chatgpt";
-import type { PlatformPromptHandler, PlatformType } from "@/lib/platforms/common/types.ts";
+import { ChatgptHook, ChatgptPromptProcessor } from "./chatgpt";
+import type { PlatformPromptProcessor, PlatformType } from "@/lib/platforms/common/types.ts";
 
 export function hooks() {
   return [new ChatgptHook()];
 }
 
-export function promptHandlers() {
-  return [new ChatgptPromptHandler()];
+export function detectPlatform(location: Location): PlatformType | never {
+  for (const hook of hooks()) {
+    if (hook.supports(location)) {
+      return hook.platformName();
+    }
+  }
+
+  throw new Error("Unsupported platform");
 }
 
-export function platformPromptHandler(platform: PlatformType): PlatformPromptHandler | null {
-  const handlers = promptHandlers();
-  const filtered = handlers.filter((handler) => handler.platformName() === platform);
+export function promptProcessors() {
+  return [new ChatgptPromptProcessor()];
+}
 
-  return filtered[0] ?? null;
+export function platformPromptProcessor(platform: PlatformType): PlatformPromptProcessor | null {
+  return promptProcessors().find((processor) => processor.platformName() === platform) || null;
 }

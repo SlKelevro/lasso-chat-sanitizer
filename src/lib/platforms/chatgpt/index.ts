@@ -1,2 +1,2 @@
 export * from "./hook";
-export * from "./prompt.handler";
+export * from "./prompt.processor";

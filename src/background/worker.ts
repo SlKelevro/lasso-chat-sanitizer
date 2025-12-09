@@ -1,4 +1,5 @@
 import browser from "webextension-polyfill";
+import type { Runtime } from "webextension-polyfill";
 import {
   buildMessage,
   hasRequestId,
@@ -11,7 +12,7 @@ import {
 import { IssueStorage } from "@/lib/issues/issue.storage.ts";
 import { MESSAGE_TYPES, SOURCE_TYPES } from "@/lib/messaging/constants.ts";
 import type { PayloadMap, PromptProcessingResult } from "@/lib/messaging/types.ts";
-import { platformPromptHandler } from "@/lib/platforms";
+import { platformPromptProcessor } from "@/lib/platforms";
 
 const issueStorage = new IssueStorage();
 
@@ -31,9 +32,13 @@ browser.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-browser.runtime.onMessage.addListener((message: unknown) => {
+browser.runtime.onMessage.addListener((message: unknown, sender: Runtime.MessageSender) => {
   console.log("Received message:", message);
   if (!isProtocolMessage(message)) {
+    return true;
+  }
+
+  if (!sender.tab?.id) {
     return true;
   }
 
@@ -44,7 +49,7 @@ browser.runtime.onMessage.addListener((message: unknown) => {
       browser.storage.local.set({ [message.platformType]: { lastRequest: content } });
 
       let responsePayload: PromptProcessingResult = { result: "allowed", content };
-      const handler = platformPromptHandler(message.platformType);
+      const handler = platformPromptProcessor(message.platformType);
       if (handler) {
         const foundTokens = handler.findSanitizableTokens(content);
         const tokenStatuses = issueStorage.findTokenStatuses(foundTokens);
@@ -52,19 +57,20 @@ browser.runtime.onMessage.addListener((message: unknown) => {
 
         if (tokenStatuses.unknown.length) {
           issueStorage.addIssues(tokenStatuses.unknown);
+          issueStorage.save().then(() => console.log("Issue storage updated"));
         }
 
-        const rejectedTokensMessage = withSource(
-          withRequestId(buildMessage(MESSAGE_TYPES.TOKENS_REJECTED, { tokens: tokensToReject })),
-          SOURCE_TYPES.WORKER,
-        );
-
-        browser.runtime.sendMessage(rejectedTokensMessage);
-
         if (tokensToReject.length > 0) {
+          const rejectedTokensMessage = withSource(
+            withRequestId(buildMessage(MESSAGE_TYPES.TOKENS_REJECTED, { tokens: tokensToReject })),
+            SOURCE_TYPES.WORKER,
+          );
+
+          browser.tabs.sendMessage(sender.tab.id, rejectedTokensMessage);
+
           responsePayload = { result: "rejected", tokens: tokensToReject };
         } else {
-          responsePayload = { result: "allowed", content: handler.updateContent(content, tokenStatuses.dismissed) };
+          responsePayload = { result: "allowed", content: handler.updatePrompt(content, tokenStatuses.dismissed) };
         }
       }
 

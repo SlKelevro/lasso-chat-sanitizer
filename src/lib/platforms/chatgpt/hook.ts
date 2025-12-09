@@ -68,13 +68,9 @@ export class ChatgptHook implements PlatformHook {
 
       return originalFetch(input, init);
     };
-
-    console.log("window.fetch after replacement", window.fetch);
   }
 
   private shouldProcess(url: URL): boolean {
-    console.log("shouldProcess():", url.host, url.pathname, url.href);
-
     if (!KNOWN_DOMAINS.some((host) => host === url.host)) {
       return false;
     }
